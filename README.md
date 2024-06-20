@@ -1,6 +1,6 @@
-# flutter_application_1
+# TinyCare
 
-A new Flutter project.
+A Flutter project.
 
 ## Getting Started
 

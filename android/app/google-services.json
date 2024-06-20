@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "561890103119",
+    "project_id": "badymonitoring",
+    "storage_bucket": "badymonitoring.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:561890103119:android:f0aaa8382869466788ff3a",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVxMz8yM-0JfgHSBDeekMqWW60OmL2Rvg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
