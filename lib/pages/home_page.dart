@@ -69,7 +69,7 @@ class _HomePageState extends State<HomePage> {
   void signUserOut() {}
 
   Future<void> callPythonEndpoint() async {
-    const url = 'http://10.0.0.38:8030/do_something';
+    const url = 'http://172.21.224.1:8030/do_something';
     try {
       final response = await http.post(Uri.parse(url));
       if (response.statusCode == 200) {
@@ -79,7 +79,7 @@ class _HomePageState extends State<HomePage> {
       }
     } 
     catch (error) {
-      print('Error calling service: $error');
+      print('Error calling service callPythonScript: $error');
     }
 
     // final scriptPath =
@@ -92,6 +92,20 @@ class _HomePageState extends State<HomePage> {
     //   print("Error in calling python script: $e");
     // }
   }
+
+
+  Future<void> runPython() async {
+    try {
+      var result = await http.get(Uri.parse('http://172.21.224.1:8030/video_feed'));
+      print(result); 
+    } 
+    catch (e) {
+      print('Error calling service runPython: $e');
+    }
+  }
+ 
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +134,8 @@ class _HomePageState extends State<HomePage> {
             () {
               // Handle baby monitoring tap
               print("Baby Monitoring tapped");
-              callPythonEndpoint();
+              // callPythonEndpoint();
+              runPython();
             },
           ),
           _buildTile(
