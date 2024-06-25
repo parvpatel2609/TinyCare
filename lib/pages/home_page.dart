@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/pages/BabyMonitoring.dart';
 import 'package:flutter_application_1/pages/login_page.dart';
 import 'package:flutter_application_1/services/TokenService.dart';
 import 'package:flutter_application_1/services/shared_pref.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:http/http.dart' as http;
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -68,45 +68,6 @@ class _HomePageState extends State<HomePage> {
 
   void signUserOut() {}
 
-  Future<void> callPythonEndpoint() async {
-    const url = 'http://172.21.224.1:8030/do_something';
-    try {
-      final response = await http.post(Uri.parse(url));
-      if (response.statusCode == 200) {
-        print('Image processing successful.');
-      } else {
-        print('Error: ${response.statusCode}');
-      }
-    } 
-    catch (error) {
-      print('Error calling service callPythonScript: $error');
-    }
-
-    // final scriptPath =
-    //     '${Platform.resolvedExecutable.replaceAll('flutter', 'script.py')}';
-    // print("Script path: $scriptPath");
-    // try {
-    //   var result = Process.run(scriptPath);
-    //   print(result);
-    // } catch (e) {
-    //   print("Error in calling python script: $e");
-    // }
-  }
-
-
-  Future<void> runPython() async {
-    try {
-      var result = await http.get(Uri.parse('http://172.21.224.1:8030/video_feed'));
-      print(result); 
-    } 
-    catch (e) {
-      print('Error calling service runPython: $e');
-    }
-  }
- 
-
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,8 +95,9 @@ class _HomePageState extends State<HomePage> {
             () {
               // Handle baby monitoring tap
               print("Baby Monitoring tapped");
-              // callPythonEndpoint();
-              runPython();
+              //Navitage to Baby Monitoring Page
+              Navigator.pushReplacement(context,
+                  MaterialPageRoute(builder: (context) => BabyMonitoring()));
             },
           ),
           _buildTile(
