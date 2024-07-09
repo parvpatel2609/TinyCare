@@ -1,10 +1,22 @@
 import 'dart:async';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/pages/BabyMonitoring.dart';
 import 'package:flutter_application_1/pages/login_page.dart';
+import 'package:flutter_application_1/pages/notification_page.dart';
+import 'package:flutter_application_1/pages/push_notification.dart';
 import 'package:flutter_application_1/services/TokenService.dart';
 import 'package:flutter_application_1/services/shared_pref.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+final navigatorkey = GlobalKey<NavigatorState>();
+
+Future _firebaseBackgroundMessage(RemoteMessage message) async {
+  if (message.notification != null) {
+    print("Some notification recevied");
+  }
+}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,6 +29,7 @@ class _HomePageState extends State<HomePage> {
   late final Future<String> _tokenFuture;
   Timer? _tokenCheckerTimer;
   final shered = SharedpreferenceHelper();
+  late WebSocketChannel channel;
 
   @override
   void initState() {
@@ -26,9 +39,75 @@ class _HomePageState extends State<HomePage> {
 
     // Periodic token check every minute
     _tokenCheckerTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      // print("Hello we are in continuous function");
       _checkTokenExpiration();
     });
+
+    _connectEyeCheckingWebSocket();
+    _setupFirebaseMessaging();
+  }
+
+  // Setup Firebase Messaging for handling notification clicks
+  void _setupFirebaseMessaging() {
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      if (message.notification != null) {
+        print("Notification tapped: ${message.notification?.title}");
+        _handleNotificationClick(message);
+      }
+    });
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print("Got a message in foreground: ${message.notification?.title}");
+      if (message.notification != null) {
+        PushNotifications.showNotification(message);
+      }
+    });
+  }
+
+  // Handle notification click
+  void _handleNotificationClick(RemoteMessage message) {
+    if (message.notification != null) {
+      // ignore: unnecessary_null_comparison
+      if (_tokenFuture != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => NotificationPage(),
+              settings: RouteSettings(arguments: message)),
+        );
+      }
+    } else {
+      Fluttertoast.showToast(
+        msg: "Unknown notification action",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.CENTER,
+        backgroundColor: Colors.deepPurple,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
+    }
+  }
+
+  //connect to socket for streaming baby
+  void _connectEyeCheckingWebSocket() {
+    // print("We are in _connectWebSocket");
+    channel = WebSocketChannel.connect(Uri.parse('ws://10.0.0.38:8760'));
+    // print("Channel created perfectly");
+    channel.stream.listen(
+      (message) {
+        print("Message comes from server: $message");
+
+        PushNotifications.intt();
+        PushNotifications.localNotiInit();
+
+        FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundMessage);
+      },
+      onError: (error) {
+        print('WebSocket error in eye checking function: $error');
+      },
+      onDone: () {
+        print('WebSocket connection closed in eye checking');
+      },
+    );
   }
 
   Future<String> _initializeToken() async {

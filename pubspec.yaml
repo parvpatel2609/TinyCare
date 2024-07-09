@@ -50,6 +50,9 @@ dependencies:
   flutter_web_socket: ^1.0.5
   web_socket_channel: ^3.0.0
   video_player: ^2.8.7
+  firebase_messaging: ^14.9.4
+  firebase_analytics: ^10.10.7
+  flutter_local_notifications: ^17.2.1+1
 
 dev_dependencies:
   flutter_test:
