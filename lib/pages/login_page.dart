@@ -1,4 +1,3 @@
-// ignore_for_file: use_build_context_synchronously
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -70,21 +69,20 @@ class _LoginPageState extends State<LoginPage> {
           // ignore: unused_local_variable
           final token = JWTService().generateTokenId(
               userData['Id'].toString(), userData['email'].toString(), secret);
-
-          //priting generated token here
-          // print("Generated Token: $token");
+          print("Generated Token: $token");
 
           bool fl_id = await shered.saveUserId(userData['Id'].toString());
           bool fl_email =
               await shered.saveUserEmail(userData['email'].toString());
           bool fl_token = await shered.saveUserToken(token);
+          print("Token saved: $fl_token");
 
           // print("Flag _ id : $fl_id");
           // print("Flag _ Email : $fl_email");
           // print("Flag _ Token : $fl_token");
 
-          // print("TOken is expied: ");
-          // print(JWTService().isTokenExpired(token));
+          print("Token is expied or not: ");
+          print(JWTService().isTokenExpired(token));
 
           // final decodePayload = JWTService().verifyToken(token, secret);
           // print("Decoded token: $decodePayload");
@@ -102,8 +100,10 @@ class _LoginPageState extends State<LoginPage> {
                 backgroundColor: Colors.deepPurple,
                 textColor: Colors.black,
                 fontSize: 16.0);
+            shered.saveUserEmail("USEREMAILKEY");
+            shered.saveUserId("USERIDKEY");
+            shered.saveUserToken("USERTOKENKEY");
           } else {
-            print("We are in navigation stahe");
             // Navigate to HomePage
             Navigator.pushReplacement(
               context,

@@ -16,7 +16,6 @@ class JWTService {
 
     final jwt = JWT(payload);
     final token = jwt.sign(SecretKey(secret));
-
     return token;
   }
 
@@ -31,6 +30,11 @@ class JWTService {
   }
 
   bool isTokenExpired(String token) {
-    return JwtDecoder.isExpired(token);
+    try {
+      return JwtDecoder.isExpired(token);
+    } catch (e) {
+      print("Error in isTOkenExpired function: $e");
+      return true;
+    }
   }
 }

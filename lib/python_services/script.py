@@ -2,22 +2,9 @@ import asyncio
 import base64
 import cv2
 import websockets
-# from flask import Flask, render_template
-# from flask_socketio import SocketIO, emit
 
 faceCascade = cv2.CascadeClassifier("C:/Users/Parv Patel/Documents/GitHub/MyApp/flutter_application_1/lib/python_services/haarcascade_frontalface_default.xml")
 eyesCascade = cv2.CascadeClassifier("C:/Users/Parv Patel/Documents/GitHub/MyApp/flutter_application_1/lib/python_services/haarcascade_eye.xml")
-
-# app = Flask(__name__)
-# socketio = SocketIO(app)
-
-# @socketio.on('connect')
-# def handle_connect():
-#     print('Client connected with socketio server')
-
-# @socketio.on('disconnect')
-# def handle_disconnect():
-#     print('Client disconnected with socketio server')
 
 
 def draw_boundary(img, classifier, scaleFactor, minNeighbours, color, text):
@@ -42,15 +29,6 @@ def detect(img, faceCascade, eyeCascade):
         # Check if eyes are detected
         if len(eye_coord) == 4:
             eyes_open = True
-            # cv2.putText(img, "Eyes Open", (face_coord[0], face_coord[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color['green'], 2, cv2.LINE_AA)
-        # else:
-            # cv2.putText(img, "Eyes Closed", (face_coord[0], face_coord[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color['red'], 2, cv2.LINE_AA)
-
-        # if eyes_open: 
-        #     await asyncio.sleep(900)
-    
-    # if eyes_open:
-    #     asyncio.sleep(900)  # 15 minutes delay if eyes are open
         
     return img, eyes_open
 
@@ -78,6 +56,15 @@ async def monitor_eye(websocket, self):
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
             print("Eye checking condition result: ", open)
+            
+            
+            # Check for incoming messages from the Flutter app
+            message = websocket.recv()
+            if message == 'stop_monitor_eye':
+                print("Received stop_monitor_eye message, stopping monitor_eye function")
+                # monitoring_eye_function = False
+                break
+            
     except Exception as e:
         print(f"Error: {e}")
     finally:
@@ -86,35 +73,35 @@ async def monitor_eye(websocket, self):
         print("Client disconnected with eye open or not checking function")
 
 
+# streaming video feed of baby to their parents phone
+async def send_video(websocket, path):    
+    print("Client connected with baby video streaming function")
+    cap = cv2.VideoCapture(0)  # Open the default camera
 
-#streaming video feed of baby to their parents phone
-async def send_video(websocket, path):
-        print("Client connected with baby video streaming function")
-        cap = cv2.VideoCapture(0)  # Open the default camera
-
-        try:
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
-                    break                
-                # Encode the frame as JPEG
-                _, buffer = cv2.imencode('.jpg', frame)                
-                # Convert to base64
-                jpg_as_text = base64.b64encode(buffer).decode('utf-8')                
-                # Send the frame over the websocket
-                await websocket.send(jpg_as_text)                
-                # Small delay to control frame rate
-                await asyncio.sleep(0.1)
-        except Exception as e:
-            print(f"Error: {e}")
-        finally:
-            cap.release()
-            print("Client disconnected with baby video streaming function")
+    try:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break            
+            cv2.imshow("baby monitoring", frame)    
+            # Encode the frame as JPEG
+            _, buffer = cv2.imencode('.jpg', frame)                
+            # Convert to base64
+            jpg_as_text = base64.b64encode(buffer).decode('utf-8')                
+            # Send the frame over the websocket
+            await websocket.send(jpg_as_text)                
+            # Small delay to control frame rate
+            await asyncio.sleep(0.1)
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        cap.release()
+        print("Client disconnected with baby video streaming function")
 
 
 
 async def main():
-    print("Server stared")
+    print("Server stared")    
     async with websockets.serve(monitor_eye, "0.0.0.0", 8760):
         await asyncio.Future()  # run forever
     async with websockets.serve(send_video, "0.0.0.0", 8765):

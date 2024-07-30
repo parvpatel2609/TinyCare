@@ -1,22 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/pages/BabyMonitoring.dart';
 import 'package:flutter_application_1/pages/login_page.dart';
-import 'package:flutter_application_1/pages/notification_page.dart';
-import 'package:flutter_application_1/pages/push_notification.dart';
+import 'package:flutter_application_1/pages/notification_services.dart';
 import 'package:flutter_application_1/services/TokenService.dart';
 import 'package:flutter_application_1/services/shared_pref.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 final navigatorkey = GlobalKey<NavigatorState>();
-
-Future _firebaseBackgroundMessage(RemoteMessage message) async {
-  if (message.notification != null) {
-    print("Some notification recevied");
-  }
-}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -29,7 +23,10 @@ class _HomePageState extends State<HomePage> {
   late final Future<String> _tokenFuture;
   Timer? _tokenCheckerTimer;
   final shered = SharedpreferenceHelper();
-  late WebSocketChannel channel;
+  WebSocketChannel? channel;
+  WebSocketChannel? channel_eye_checking;
+  StreamController<dynamic> _controller = StreamController.broadcast();
+  NotificationServices notificationServices = NotificationServices();
 
   @override
   void initState() {
@@ -42,64 +39,68 @@ class _HomePageState extends State<HomePage> {
       _checkTokenExpiration();
     });
 
+    _connectWebSocket();
     _connectEyeCheckingWebSocket();
-    _setupFirebaseMessaging();
-  }
 
-  // Setup Firebase Messaging for handling notification clicks
-  void _setupFirebaseMessaging() {
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      if (message.notification != null) {
-        print("Notification tapped: ${message.notification?.title}");
-        _handleNotificationClick(message);
-      }
+    notificationServices.requestNotificationPermission();
+    notificationServices.firebaseInit(context);
+    notificationServices.setupInteractMessage(context);
+    // notificationServices.isTokenRefresh();
+    notificationServices.getDeviceToken().then((value) {
+      print("Ddevice token");
+      print(value);
     });
-
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print("Got a message in foreground: ${message.notification?.title}");
-      if (message.notification != null) {
-        PushNotifications.showNotification(message);
-      }
-    });
-  }
-
-  // Handle notification click
-  void _handleNotificationClick(RemoteMessage message) {
-    if (message.notification != null) {
-      // ignore: unnecessary_null_comparison
-      if (_tokenFuture != null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => NotificationPage(),
-              settings: RouteSettings(arguments: message)),
-        );
-      }
-    } else {
-      Fluttertoast.showToast(
-        msg: "Unknown notification action",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        backgroundColor: Colors.deepPurple,
-        textColor: Colors.white,
-        fontSize: 16.0,
-      );
-    }
   }
 
   //connect to socket for streaming baby
-  void _connectEyeCheckingWebSocket() {
-    // print("We are in _connectWebSocket");
+  void _connectWebSocket() {
+    print("We are in _connectWebSocket");
     channel = WebSocketChannel.connect(Uri.parse('ws://10.0.0.38:8760'));
     // print("Channel created perfectly");
-    channel.stream.listen(
+    channel!.stream.listen(
+      (message) {
+        // print(message);
+        setState(() {
+          //update state if needed
+          _controller.add(message);
+        });
+        // print("set images: $_imageData");
+      },
+      onError: (error) {
+        print('WebSocket error: $error');
+      },
+      onDone: () {
+        print('WebSocket connection closed');
+      },
+    );
+  }
+
+  //connecting with eye checking alert server
+  void _connectEyeCheckingWebSocket() {
+    print("We are in _connectEyeCheckingWebSocket");
+    channel_eye_checking =
+        WebSocketChannel.connect(Uri.parse('ws://10.0.0.38:8765'));
+    print("Channel created perfectly");
+    print("Channel details: $channel_eye_checking");
+    channel_eye_checking!.stream.listen(
       (message) {
         print("Message comes from server: $message");
 
-        PushNotifications.intt();
-        PushNotifications.localNotiInit();
+        //write a code for sending notification on mobile
+        notificationServices.requestNotificationPermission();
+        notificationServices.firebaseInit(context);
+        notificationServices.setupInteractMessage(context);
+        notificationServices.getDeviceToken().then((value) {
+          print("Ddevice token");
+          print(value);
+        });
 
-        FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundMessage);
+        if (message == "True") {
+          _sendNotification('Eye status is from closed to open..', '');
+        }
+        if (message == "False"){
+          _sendNotification('Eyes are closed..', '');
+        }
       },
       onError: (error) {
         print('WebSocket error in eye checking function: $error');
@@ -108,9 +109,23 @@ class _HomePageState extends State<HomePage> {
         print('WebSocket connection closed in eye checking');
       },
     );
+    print("We are outside channel connection");
+  }
+
+  void _sendNotification(String title, String body) {
+    RemoteMessage remoteMessage = RemoteMessage(
+      notification: RemoteNotification(
+        title: title,
+        body: body,
+      ),
+    );
+
+    notificationServices.showNotification(remoteMessage);
   }
 
   Future<String> _initializeToken() async {
+    // String? token = await SharedpreferenceHelper().getUserToken();
+    // print("Retrieved Token: $token");
     return await SharedpreferenceHelper().getUserToken();
   }
 
@@ -118,11 +133,14 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _tokenCheckerTimer
         ?.cancel(); // Cancel the timer when the widget is disposed
+    channel!.sink.close();
+    channel_eye_checking!.sink.close();
     super.dispose();
   }
 
   void _checkTokenExpiration() async {
     final token = await _tokenFuture;
+    print("Checking token expiration for: $token");
 
     if (JWTService().isTokenExpired(token)) {
       Fluttertoast.showToast(
@@ -133,19 +151,29 @@ class _HomePageState extends State<HomePage> {
         textColor: Colors.black,
         fontSize: 16.0,
       );
+      shered.saveUserEmail("USEREMAILKEY");
+      shered.saveUserId("USERIDKEY");
+      shered.saveUserToken("USERTOKENKEY");
       _redirectToLogin();
     }
   }
 
   void _redirectToLogin() {
-    print("Hello please try again after some time");
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const LoginPage()),
     );
   }
 
-  void signUserOut() {}
+  void signUserOut() {
+    // shered.saveUserEmail("USEREMAILKEY");
+    // shered.saveUserId("USERIDKEY");
+    // shered.saveUserToken("USERTOKENKEY");
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -160,94 +188,55 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: GridView.count(
-        crossAxisCount: 2,
-        padding: const EdgeInsets.all(10),
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+      body: Column(
         children: [
-          _buildTile(
-            context,
-            'Baby Monitoring',
-            Icons.child_care,
-            Colors.blue,
-            () {
-              // Handle baby monitoring tap
-              print("Baby Monitoring tapped");
-              //Navitage to Baby Monitoring Page
-              Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (context) => BabyMonitoring()));
+          const SizedBox(height: 40.0),
+          StreamBuilder(
+            stream: _controller.stream,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const CircularProgressIndicator();
+              }
+              if (snapshot.connectionState == ConnectionState.done) {
+                return const Center(
+                  child: Text("Connection Closed"),
+                );
+              }
+              return Image.memory(
+                Uint8List.fromList(
+                  base64Decode(snapshot.data.toString()),
+                ),
+                gaplessPlayback: true,
+                excludeFromSemantics: true,
+                // width: 420.0,
+                // height: 400.0,
+              );
             },
           ),
-          _buildTile(
-            context,
-            'Temperature',
-            Icons.thermostat,
-            Colors.red,
-            () {
-              // Handle temperature tap
-              print("Temperature tapped");
-            },
-          ),
-          _buildTile(
-            context,
-            'Chat with Parents',
-            Icons.chat,
-            Colors.green,
-            () {
-              print("Chat with Parents tapped");
-            },
-          ),
-          _buildTile(
-            context,
-            'Medicine Reminder',
-            Icons.medication,
-            Colors.orange,
-            () {
-              print("Medicine Reminder tapped");
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTile(BuildContext context, String title, IconData icon,
-      Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 5,
-              offset: Offset(2, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 50,
-              color: Colors.white,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  //add chat functionality here
+                },
+                child: Text("Chat"),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+              ElevatedButton(
+                onPressed: () {
+                  //add reminder functionally here
+                },
+                child: Text("Reminder"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  //add temp. data analysis functionally here
+                },
+                child: Text("Temperature"),
+              ),
+            ],
+          )
+        ],
       ),
     );
   }
