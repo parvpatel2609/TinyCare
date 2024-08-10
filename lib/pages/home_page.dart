@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/pages/chatlist_page.dart';
 import 'package:flutter_application_1/pages/login_page.dart';
 import 'package:flutter_application_1/pages/notification_services.dart';
 import 'package:flutter_application_1/services/TokenService.dart';
@@ -47,7 +48,7 @@ class _HomePageState extends State<HomePage> {
     notificationServices.setupInteractMessage(context);
     // notificationServices.isTokenRefresh();
     notificationServices.getDeviceToken().then((value) {
-      print("Ddevice token");
+      print("device token");
       print(value);
     });
   }
@@ -55,8 +56,8 @@ class _HomePageState extends State<HomePage> {
   //connect to socket for streaming baby
   void _connectWebSocket() {
     print("We are in _connectWebSocket");
-    channel = WebSocketChannel.connect(Uri.parse('ws://10.0.0.38:8760'));
-    // print("Channel created perfectly");
+    channel = WebSocketChannel.connect(Uri.parse('ws://192.168.1.5:8760'));
+    // print("Channel created perfectly in video streaming");
     channel!.stream.listen(
       (message) {
         // print(message);
@@ -79,9 +80,9 @@ class _HomePageState extends State<HomePage> {
   void _connectEyeCheckingWebSocket() {
     print("We are in _connectEyeCheckingWebSocket");
     channel_eye_checking =
-        WebSocketChannel.connect(Uri.parse('ws://10.0.0.38:8765'));
+        WebSocketChannel.connect(Uri.parse('ws://192.168.1.5:8765'));
     print("Channel created perfectly");
-    print("Channel details: $channel_eye_checking");
+    // print("Channel details: $channel_eye_checking");
     channel_eye_checking!.stream.listen(
       (message) {
         print("Message comes from server: $message");
@@ -91,14 +92,14 @@ class _HomePageState extends State<HomePage> {
         notificationServices.firebaseInit(context);
         notificationServices.setupInteractMessage(context);
         notificationServices.getDeviceToken().then((value) {
-          print("Ddevice token");
+          print("device token");
           print(value);
         });
 
         if (message == "True") {
           _sendNotification('Eye status is from closed to open..', '');
         }
-        if (message == "False"){
+        if (message == "False") {
           _sendNotification('Eyes are closed..', '');
         }
       },
@@ -219,6 +220,9 @@ class _HomePageState extends State<HomePage> {
               ElevatedButton(
                 onPressed: () {
                   //add chat functionality here
+                  Navigator.push(context, MaterialPageRoute(builder: (context) {
+                    return ChatlistPage();
+                  }));
                 },
                 child: Text("Chat"),
               ),

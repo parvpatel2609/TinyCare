@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/components/my_button.dart';
 import 'package:flutter_application_1/components/my_textfield.dart';
+import 'package:flutter_application_1/models/UserModel.dart';
 import 'package:flutter_application_1/pages/home_page.dart';
 import 'package:flutter_application_1/pages/register_page.dart';
 import 'package:flutter_application_1/services/TokenService.dart';
@@ -28,122 +29,193 @@ class _LoginPageState extends State<LoginPage> {
 
   //navigate to register page
   void navigateToRegisterPage(BuildContext context) {
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => RegisterPage()));
+    Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => RegisterPage()));
   }
 
-  //sing user in method
-  void signUserIn() async {
-    //show loading circle
-    showDialog(
-      context: context,
-      builder: (context) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
-      },
-    );
+  void checkValues() {
+    String email = emailController.text.trim();
+    String password = passwordController.text.trim();
 
-    //try to sign in
+    if (email == "" || password == "") {
+      showErrorMessage("Please fill all the fiedls perfectly");
+    } else {
+      login(email, password);
+    }
+  }
+
+  void login(String email, String password) async {
+    UserCredential? credential;
+
     try {
-      // print("Email id second: " + emailController.text);
-      QuerySnapshot querysnapshot = await FirebaseFirestore.instance
-          .collection("User")
-          .where('email', isEqualTo: emailController.text)
-          .get();
+      credential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+    } on FirebaseAuthException catch (ex) {
+      print(ex.code.toString());
+    }
 
-      if (querysnapshot.docs.isNotEmpty) {
-        DocumentSnapshot uInformation = querysnapshot.docs.first;
-        Map<String, dynamic> userData =
-            uInformation.data() as Map<String, dynamic>;
+    if (credential != null) {
+      String uid = credential.user!.uid;
+      DocumentSnapshot userData =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      UserModel userModel =
+          UserModel.fromMap(userData.data() as Map<String, dynamic>);
+      // print("User details : ");
+      print(userModel.email);
+      //go to the homepage
+      print("Log in successfully");
+      //generate token for authentication
+      final token = JWTService().generateTokenId(
+          userModel.uid.toString(), userModel.email.toString(), secret);
+      print("Generated Token: $token");
 
-        // ignore: avoid_print
-        print("User details: $userData");
-        // String d_pass = userData['password'].toString();
-        // print("User Password: $d_pass");
+      bool fl_id = await shered.saveUserId(userModel.uid.toString());
+      bool fl_email = await shered.saveUserEmail(userModel.email.toString());
+      bool fl_token = await shered.saveUserToken(token);
+      print("Token saved: $fl_token");
 
-        String decrypPass =
-            pass_helper.decryptData(userData['password'].toString());
+      print("Token is expied or not: ");
+      print(JWTService().isTokenExpired(token));
 
-        if (decrypPass == passwordController.text) {
-          //generate token for authentication
-          // ignore: unused_local_variable
-          final token = JWTService().generateTokenId(
-              userData['Id'].toString(), userData['email'].toString(), secret);
-          print("Generated Token: $token");
+      // Close the loading dialog
+      if (context.mounted) Navigator.pop(context);
 
-          bool fl_id = await shered.saveUserId(userData['Id'].toString());
-          bool fl_email =
-              await shered.saveUserEmail(userData['email'].toString());
-          bool fl_token = await shered.saveUserToken(token);
-          print("Token saved: $fl_token");
-
-          // print("Flag _ id : $fl_id");
-          // print("Flag _ Email : $fl_email");
-          // print("Flag _ Token : $fl_token");
-
-          print("Token is expied or not: ");
-          print(JWTService().isTokenExpired(token));
-
-          // final decodePayload = JWTService().verifyToken(token, secret);
-          // print("Decoded token: $decodePayload");
-
-          // Close the loading dialog
-          if (context.mounted) Navigator.pop(context);
-
-          // Check if the token is expired
-          if (JWTService().isTokenExpired(token)) {
-            Fluttertoast.showToast(
-                msg: "Token expired! Please sign in again.",
-                toastLength: Toast.LENGTH_SHORT,
-                gravity: ToastGravity.CENTER,
-                timeInSecForIosWeb: 1,
-                backgroundColor: Colors.deepPurple,
-                textColor: Colors.black,
-                fontSize: 16.0);
-            shered.saveUserEmail("USEREMAILKEY");
-            shered.saveUserId("USERIDKEY");
-            shered.saveUserToken("USERTOKENKEY");
-          } else {
-            // Navigate to HomePage
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const HomePage()),
-            );
-          }
-        } else {
-          // Close the loading dialog
-          if (context.mounted) Navigator.pop(context);
-
-          // Show error message for incorrect password
-          Fluttertoast.showToast(
-              msg: "Incorrect password!",
-              toastLength: Toast.LENGTH_SHORT,
-              gravity: ToastGravity.CENTER,
-              timeInSecForIosWeb: 1,
-              backgroundColor: Colors.deepPurple,
-              textColor: Colors.black,
-              fontSize: 16.0);
-        }
-      } else {
-        // Close the loading dialog
-        if (context.mounted) Navigator.pop(context);
-
+      // Check if the token is expired
+      if (JWTService().isTokenExpired(token)) {
         Fluttertoast.showToast(
-            msg: "User not found!",
+            msg: "Token expired! Please sign in again.",
             toastLength: Toast.LENGTH_SHORT,
             gravity: ToastGravity.CENTER,
             timeInSecForIosWeb: 1,
             backgroundColor: Colors.deepPurple,
             textColor: Colors.black,
             fontSize: 16.0);
+        shered.saveUserEmail("USEREMAILKEY");
+        shered.saveUserId("USERIDKEY");
+        shered.saveUserToken("USERTOKENKEY");
+      } else {
+        // Navigate to HomePage
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
       }
-    } on FirebaseAuthException catch (e) {
-      Navigator.pop(context);
-
-      //show error message
-      showErrorMessage(e.code);
     }
   }
+
+  //sing user in method
+  // void signUserIn() async {
+  //   //show loading circle
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) {
+  //       return const Center(
+  //         child: CircularProgressIndicator(),
+  //       );
+  //     },
+  //   );
+
+  //   //try to sign in
+  //   try {
+  //     // print("Email id second: " + emailController.text);
+  //     QuerySnapshot querysnapshot = await FirebaseFirestore.instance
+  //         .collection("User")
+  //         .where('email', isEqualTo: emailController.text)
+  //         .get();
+
+  //     if (querysnapshot.docs.isNotEmpty) {
+  //       DocumentSnapshot uInformation = querysnapshot.docs.first;
+  //       Map<String, dynamic> userData =
+  //           uInformation.data() as Map<String, dynamic>;
+
+  //       // ignore: avoid_print
+  //       print("User details: $userData");
+  //       // String d_pass = userData['password'].toString();
+  //       // print("User Password: $d_pass");
+
+  //       String decrypPass =
+  //           pass_helper.decryptData(userData['password'].toString());
+
+  //       if (decrypPass == passwordController.text) {
+  //         //generate token for authentication
+  //         // ignore: unused_local_variable
+  //         final token = JWTService().generateTokenId(
+  //             userData['Id'].toString(), userData['email'].toString(), secret);
+  //         print("Generated Token: $token");
+
+  //         bool fl_id = await shered.saveUserId(userData['Id'].toString());
+  //         bool fl_email =
+  //             await shered.saveUserEmail(userData['email'].toString());
+  //         bool fl_token = await shered.saveUserToken(token);
+  //         print("Token saved: $fl_token");
+
+  //         // print("Flag _ id : $fl_id");
+  //         // print("Flag _ Email : $fl_email");
+  //         // print("Flag _ Token : $fl_token");
+
+  //         print("Token is expied or not: ");
+  //         print(JWTService().isTokenExpired(token));
+
+  //         // final decodePayload = JWTService().verifyToken(token, secret);
+  //         // print("Decoded token: $decodePayload");
+
+  //         // Close the loading dialog
+  //         if (context.mounted) Navigator.pop(context);
+
+  //         // Check if the token is expired
+  //         if (JWTService().isTokenExpired(token)) {
+  //           Fluttertoast.showToast(
+  //               msg: "Token expired! Please sign in again.",
+  //               toastLength: Toast.LENGTH_SHORT,
+  //               gravity: ToastGravity.CENTER,
+  //               timeInSecForIosWeb: 1,
+  //               backgroundColor: Colors.deepPurple,
+  //               textColor: Colors.black,
+  //               fontSize: 16.0);
+  //           shered.saveUserEmail("USEREMAILKEY");
+  //           shered.saveUserId("USERIDKEY");
+  //           shered.saveUserToken("USERTOKENKEY");
+  //         } else {
+  //           // Navigate to HomePage
+  //           Navigator.pushReplacement(
+  //             context,
+  //             MaterialPageRoute(builder: (context) => const HomePage()),
+  //           );
+  //         }
+  //       } else {
+  //         // Close the loading dialog
+  //         if (context.mounted) Navigator.pop(context);
+
+  //         // Show error message for incorrect password
+  //         Fluttertoast.showToast(
+  //             msg: "Incorrect password!",
+  //             toastLength: Toast.LENGTH_SHORT,
+  //             gravity: ToastGravity.CENTER,
+  //             timeInSecForIosWeb: 1,
+  //             backgroundColor: Colors.deepPurple,
+  //             textColor: Colors.black,
+  //             fontSize: 16.0);
+  //       }
+  //     } else {
+  //       // Close the loading dialog
+  //       if (context.mounted) Navigator.pop(context);
+
+  //       Fluttertoast.showToast(
+  //           msg: "User not found!",
+  //           toastLength: Toast.LENGTH_SHORT,
+  //           gravity: ToastGravity.CENTER,
+  //           timeInSecForIosWeb: 1,
+  //           backgroundColor: Colors.deepPurple,
+  //           textColor: Colors.black,
+  //           fontSize: 16.0);
+  //     }
+  //   } on FirebaseAuthException catch (e) {
+  //     Navigator.pop(context);
+
+  //     //show error message
+  //     showErrorMessage(e.code);
+  //   }
+  // }
 
   //method to say about alert like email is wrong
   void showErrorMessage(String message) {
@@ -162,8 +234,9 @@ class _LoginPageState extends State<LoginPage> {
         });
   }
 
-  void Register_Page () {
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const RegisterPage()));
+  void Register_Page() {
+    Navigator.pushReplacement(
+        context, MaterialPageRoute(builder: (context) => const RegisterPage()));
   }
 
   @override
@@ -224,7 +297,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 //sign in button
                 MyButton(
-                  onTap: signUserIn,
+                  onTap: checkValues,
                   text: "Sing In",
                 ),
 

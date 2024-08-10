@@ -8,6 +8,7 @@ A Flutter project
 - User can track their child temperature & Heart Rate and also comes alert if it overcome a limit
 - User can also chat with each other (Like, Father & Mother)
 - Forgot Password functionally with otp authentication
+- Child eye status alert functionality (If eye status changed then send alert on mobile)
 
 ### Tech Stack
 

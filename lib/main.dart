@@ -5,10 +5,12 @@ import 'package:flutter_application_1/pages/login_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_application_1/pages/notification_services.dart';
 import 'package:flutter_application_1/services/shared_pref.dart';
+import 'package:uuid/uuid.dart';
 import 'firebase_options.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final NotificationServices notificationServices = NotificationServices();
+var uuid = Uuid();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
