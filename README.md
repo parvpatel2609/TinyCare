@@ -1,8 +1,8 @@
-### TinyCare (Ongoing)
+# TinyCare (Ongoing)
 
 A Flutter project
 
-### Features
+## Features
 - User as a Parent Authentication functionally by using Flutter JWTToken JWT_Decoder
 - User can see their child real time if they are far away from it
 - User can track their child temperature & Heart Rate and also comes alert if it overcome a limit
@@ -10,7 +10,7 @@ A Flutter project
 - Forgot Password functionally with otp authentication
 - Child eye status alert functionality (If eye status changed then send alert on mobile)
 
-### Tech Stack
+## Tech Stack
 
 - Frontend: Flutter
 - Backend: Python
