@@ -4,10 +4,10 @@ import 'package:flutter_application_1/components/my_button.dart';
 import 'package:flutter_application_1/components/my_textfield.dart';
 import 'package:flutter_application_1/models/UserModel.dart';
 import 'package:flutter_application_1/pages/login_page.dart';
-import 'package:flutter_application_1/services/Database.dart';
+// import 'package:flutter_application_1/services/Database.dart';
 import 'package:flutter_application_1/services/encryptData.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:random_string/random_string.dart';
+// import 'package:fluttertoast/fluttertoast.dart';
+// import 'package:random_string/random_string.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterPage extends StatefulWidget {

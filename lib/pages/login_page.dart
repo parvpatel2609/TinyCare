@@ -72,7 +72,7 @@ class _LoginPageState extends State<LoginPage> {
       bool fl_id = await shered.saveUserId(userModel.uid.toString());
       bool fl_email = await shered.saveUserEmail(userModel.email.toString());
       bool fl_token = await shered.saveUserToken(token);
-      print("Token saved: $fl_token");
+      // print("Token saved: $fl_token");
 
       print("Token is expied or not: ");
       print(JWTService().isTokenExpired(token));

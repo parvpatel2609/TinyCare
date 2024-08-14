@@ -220,9 +220,7 @@ class _HomePageState extends State<HomePage> {
               ElevatedButton(
                 onPressed: () {
                   //add chat functionality here
-                  Navigator.push(context, MaterialPageRoute(builder: (context) {
-                    return ChatlistPage();
-                  }));
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatlistPage()));
                 },
                 child: Text("Chat"),
               ),
